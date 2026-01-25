@@ -1,6 +1,8 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
+import { Slide } from "../types";
+import { FOUNDER_NAME, FOUNDER_TITLE } from "../constants";
 
-// Helper to get the AI client, ensuring we have the key if needed for Veo
+// Helper to get the AI client
 export const getAiClient = () => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
@@ -9,14 +11,98 @@ export const getAiClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
+/**
+ * Helper to strip markdown code blocks from a string if present.
+ */
+const cleanJsonResponse = (text: string): string => {
+  return text.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+};
+
+export const processPdfToSlides = async (pdfBase64: string): Promise<Slide[]> => {
+  const ai = getAiClient();
+  const cleanBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, '');
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-pro-preview", // Upgraded for better reasoning over PDF content
+    contents: [
+      {
+        parts: [
+          {
+            inlineData: {
+              data: cleanBase64,
+              mimeType: "application/pdf",
+            },
+          },
+          {
+            text: `Act as a senior sales engineer at Echelon AI Control. 
+            Transform the attached PDF deck into a compelling, 10-slide sales presentation focused on "The Infinite Canvas" and "Spatial Computing". 
+            
+            IMPORTANT: Highlight that Echelon AI Control is owned and operated by ${FOUNDER_NAME}, ${FOUNDER_TITLE}. 
+            Integrate this ownership as a mark of quality and vision throughout the narrative.
+            
+            Rules:
+            1. Extract the core value proposition from the PDF.
+            2. Rephrase it using Echelon's tone: Visionary, precise, and authoritative.
+            3. For each slide, choose a visualType from: 'grid', 'network', 'comparison', 'quote', 'apps'.
+            4. Ensure slide 1 is a powerful title slide featuring the owner's name.
+            5. Return ONLY a JSON array matching the Slide interface.
+            
+            JSON Schema:
+            type Slide = {
+              id: number;
+              title: string;
+              subtitle?: string;
+              content: string[];
+              visualType: 'grid' | 'network' | 'comparison' | 'quote' | 'apps';
+            }`,
+          },
+        ],
+      },
+    ],
+    config: {
+      thinkingConfig: { thinkingBudget: 16384 }, // Reserve tokens for high-quality reasoning
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            id: { type: Type.INTEGER },
+            title: { type: Type.STRING },
+            subtitle: { type: Type.STRING },
+            content: { type: Type.ARRAY, items: { type: Type.STRING } },
+            visualType: { type: Type.STRING, description: "One of: grid, network, comparison, quote, apps" },
+          },
+          required: ["id", "title", "content", "visualType"],
+        },
+      },
+    },
+  });
+
+  const rawText = response.text;
+  if (!rawText) {
+    throw new Error("The AI Architect returned an empty response. Please check your PDF content.");
+  }
+
+  try {
+    const cleanedJson = cleanJsonResponse(rawText);
+    const slides = JSON.parse(cleanedJson);
+    if (!Array.isArray(slides) || slides.length === 0) {
+      throw new Error("The AI failed to generate any valid slides from this PDF.");
+    }
+    return slides;
+  } catch (e) {
+    console.error("Failed to parse AI response as slides", e, rawText);
+    throw new Error("The Sales Architect couldn't structure the content properly. Please try a different PDF.");
+  }
+};
+
 export const generateEditedImage = async (
   base64Image: string,
   prompt: string,
   mimeType: string = 'image/png'
 ): Promise<string> => {
   const ai = getAiClient();
-  
-  // Clean base64 string if it contains the data url prefix
   const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, '');
 
   const response = await ai.models.generateContent({
@@ -46,18 +132,14 @@ export const generateEditedImage = async (
 };
 
 export const generateMarketingVideo = async (prompt: string, aspectRatio: '16:9' | '9:16' = '16:9'): Promise<string> => {
-  // Check for paid API key selection (required for Veo)
-  // Casting window to any to avoid type conflict with existing AIStudio definition
   const win = window as any;
   if (win.aistudio && win.aistudio.hasSelectedApiKey) {
     const hasKey = await win.aistudio.hasSelectedApiKey();
     if (!hasKey) {
-       // Just trigger it, let the UI handle the wait or retry
        await win.aistudio.openSelectKey(); 
     }
   }
 
-  // Re-instantiate client to ensure it picks up the possibly newly selected key context
   const ai = getAiClient();
 
   let operation = await ai.models.generateVideos({
@@ -71,8 +153,12 @@ export const generateMarketingVideo = async (prompt: string, aspectRatio: '16:9'
   });
 
   while (!operation.done) {
-    await new Promise(resolve => setTimeout(resolve, 5000)); // Poll every 5s
+    await new Promise(resolve => setTimeout(resolve, 5000));
     operation = await ai.operations.getVideosOperation({ operation: operation });
+  }
+
+  if (operation.error) {
+    throw new Error(`Video generation failed: ${operation.error.message}`);
   }
 
   const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
@@ -80,8 +166,11 @@ export const generateMarketingVideo = async (prompt: string, aspectRatio: '16:9'
     throw new Error("Video generation failed or returned no URI.");
   }
 
-  // Return the URI directly; the frontend will need to append the key if fetching, 
-  // but for a src attribute, we might need to proxy or use the key. 
-  // The guide says: "You must append an API key when fetching from the download link."
-  return `${videoUri}&key=${process.env.API_KEY}`;
+  const response = await fetch(`${videoUri}&key=${process.env.API_KEY}`);
+  if (!response.ok) {
+    throw new Error(`Failed to download video: ${response.statusText}`);
+  }
+  
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
 };

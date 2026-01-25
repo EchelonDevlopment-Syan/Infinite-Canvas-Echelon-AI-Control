@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { generateMarketingVideo } from '../services/geminiService';
 import { ProcessingState } from '../types';
 
@@ -8,6 +8,15 @@ const VideoGenerator: React.FC = () => {
   const [status, setStatus] = useState<ProcessingState>(ProcessingState.IDLE);
   const [errorMsg, setErrorMsg] = useState('');
   const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16'>('16:9');
+
+  // Cleanup blob URLs when they are no longer needed
+  useEffect(() => {
+    return () => {
+      if (videoUri) {
+        URL.revokeObjectURL(videoUri);
+      }
+    };
+  }, [videoUri]);
 
   const handleGenerate = async () => {
     if (!prompt) return;

@@ -1,12 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import SlidePresentation from './components/SlidePresentation';
 import ImageEditor from './components/ImageEditor';
 import VideoGenerator from './components/VideoGenerator';
+import PdfSalesArchitect from './components/PdfSalesArchitect';
 import Footer from './components/Footer';
+import { SLIDES } from './constants';
+import { Slide } from './types';
 
 function App() {
+  const [currentSlides, setCurrentSlides] = useState<Slide[]>(SLIDES);
+
+  const handleTakeover = (newSlides: Slide[]) => {
+    setCurrentSlides(newSlides);
+    // Scroll to presentation
+    const el = document.getElementById('presentation');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FDFBF7]">
       <Header />
@@ -14,7 +26,12 @@ function App() {
       <main className="flex-grow">
         <Hero />
         
-        <SlidePresentation />
+        {/* PDF Architect Section - Call to Action */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-20">
+          <PdfSalesArchitect onTakeover={handleTakeover} />
+        </div>
+
+        <SlidePresentation initialSlides={currentSlides} />
         
         {/* Interactive Studio Section */}
         <section id="studio" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { SLIDES } from '../constants';
 import { Slide } from '../types';
 
 interface SlideContentProps {
@@ -11,17 +10,21 @@ const SlideContent: React.FC<SlideContentProps> = ({ slide, onImageUpload }) => 
   const uploadContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus the upload container when it appears to capture paste events immediately
   useEffect(() => {
     if (slide.visualType === 'upload' && uploadContainerRef.current) {
       uploadContainerRef.current.focus();
     }
   }, [slide.visualType]);
 
-  const handlePaste = (e: React.ClipboardEvent) => {
-    if (slide.visualType !== 'upload' || !onImageUpload) return;
+  const handlePaste = (e: React.ClipboardEvent | ClipboardEvent) => {
+    // Determine if we should handle this paste event
+    const isUploadSlide = slide.visualType === 'upload';
+    if (!isUploadSlide || !onImageUpload) return;
     
-    const items = e.clipboardData.items;
+    const clipboardData = (e as React.ClipboardEvent).clipboardData || (e as ClipboardEvent).clipboardData;
+    if (!clipboardData) return;
+
+    const items = clipboardData.items;
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf('image') !== -1) {
         const blob = items[i].getAsFile();
@@ -33,7 +36,7 @@ const SlideContent: React.FC<SlideContentProps> = ({ slide, onImageUpload }) => 
             }
           };
           reader.readAsDataURL(blob);
-          e.preventDefault(); // Prevent default paste behavior
+          e.preventDefault();
         }
       }
     }
@@ -51,7 +54,6 @@ const SlideContent: React.FC<SlideContentProps> = ({ slide, onImageUpload }) => 
     }
   };
 
-  // Render Logic for different Visual Types
   if (slide.visualType === 'image' && slide.imageUrl) {
     return (
       <div className="h-full w-full bg-black rounded-lg overflow-hidden flex items-center justify-center relative shadow-xl border border-gray-200">
@@ -71,22 +73,22 @@ const SlideContent: React.FC<SlideContentProps> = ({ slide, onImageUpload }) => 
     return (
       <div 
         ref={uploadContainerRef}
-        className="h-full w-full bg-gray-50 rounded-lg border-2 border-dashed border-[#D4A373] flex flex-col items-center justify-center p-8 outline-none focus:bg-gray-100 transition-colors cursor-pointer"
+        className="h-full w-full bg-white/80 backdrop-blur-md rounded-lg border-4 border-dashed border-[#D4A373]/40 flex flex-col items-center justify-center p-8 outline-none focus:border-[#D4A373] transition-all cursor-pointer group hover:bg-white"
         onPaste={handlePaste}
         onClick={() => fileInputRef.current?.click()}
         tabIndex={0}
       >
-        <div className="w-16 h-16 bg-[#D4A373]/20 rounded-full flex items-center justify-center mb-4 text-[#D4A373]">
-           <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l4 4a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" />
+        <div className="w-20 h-20 bg-[#D4A373]/10 rounded-full flex items-center justify-center mb-6 text-[#D4A373] group-hover:scale-110 transition-transform">
+           <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l4 4a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" />
            </svg>
         </div>
-        <h3 className="text-xl font-bold text-gray-800 mb-2">Add New Slide</h3>
-        <p className="text-gray-500 text-center max-w-sm mb-6">
-          Paste an image directly from your clipboard (<span className="font-mono bg-gray-200 px-1 rounded">Ctrl+V</span>) or click anywhere to upload.
+        <h3 className="text-2xl font-serif font-bold text-gray-900 mb-2">Sync Copied Deck Page</h3>
+        <p className="text-gray-500 text-center max-w-sm mb-8">
+          Copy a slide from any tool and press <span className="font-mono bg-gray-900 text-white px-2 py-0.5 rounded text-sm">Ctrl+V</span> here to integrate it into the Infinite Canvas.
         </p>
-        <button className="px-4 py-2 bg-white border border-gray-300 rounded shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">
-          Select File
+        <button className="px-6 py-2 bg-gray-900 text-white rounded-full font-medium shadow-sm hover:bg-[#D4A373] transition-colors">
+          Browse Files
         </button>
         <input 
           type="file" 
@@ -99,10 +101,8 @@ const SlideContent: React.FC<SlideContentProps> = ({ slide, onImageUpload }) => 
     );
   }
 
-  // Standard Text/Graphic Slide
   return (
     <div className="h-full flex flex-col justify-center p-8 md:p-16 border border-gray-200 bg-white shadow-xl rounded-lg relative overflow-hidden transition-all duration-500">
-       {/* Background Decoration based on type */}
        {slide.visualType === 'network' && (
          <svg className="absolute top-0 right-0 w-1/2 h-full opacity-10 pointer-events-none" viewBox="0 0 100 100">
             <circle cx="80" cy="20" r="2" fill="#2F3E46"/>
@@ -111,7 +111,7 @@ const SlideContent: React.FC<SlideContentProps> = ({ slide, onImageUpload }) => 
             <path d="M80 20 L60 50 L90 60 L80 20" stroke="#2F3E46" strokeWidth="0.5" fill="none"/>
          </svg>
        )}
-       {slide.visualType === 'grid' && (
+       {(slide.visualType === 'grid' || slide.visualType === 'comparison') && (
          <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none"></div>
        )}
 
@@ -151,9 +151,18 @@ const SlideContent: React.FC<SlideContentProps> = ({ slide, onImageUpload }) => 
   );
 };
 
-const SlidePresentation: React.FC = () => {
-  const [slides, setSlides] = useState<Slide[]>([...SLIDES]);
+interface SlidePresentationProps {
+  initialSlides: Slide[];
+}
+
+const SlidePresentation: React.FC<SlidePresentationProps> = ({ initialSlides }) => {
+  const [slides, setSlides] = useState<Slide[]>(initialSlides);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    setSlides(initialSlides);
+    setCurrentIndex(0);
+  }, [initialSlides]);
 
   const nextSlide = () => {
     setCurrentIndex((prev) => (prev + 1) % slides.length);
@@ -164,15 +173,15 @@ const SlidePresentation: React.FC = () => {
   };
 
   const handleAddSlide = () => {
-    const newId = Math.max(...slides.map(s => s.id)) + 1;
+    const newId = slides.length > 0 ? Math.max(...slides.map(s => s.id)) + 1 : 1;
     const newSlide: Slide = {
       id: newId,
-      title: 'New Slide',
+      title: 'New Spatial Node',
       content: [],
       visualType: 'upload'
     };
     setSlides([...slides, newSlide]);
-    setCurrentIndex(slides.length); // Jump to the new slide
+    setCurrentIndex(slides.length);
   };
 
   const handleImageUpdate = (base64: string) => {
@@ -182,7 +191,7 @@ const SlidePresentation: React.FC = () => {
           ...s,
           visualType: 'image',
           imageUrl: base64,
-          title: 'Custom Slide'
+          title: 'Integrated Canvas Object'
         };
       }
       return s;
@@ -202,16 +211,15 @@ const SlidePresentation: React.FC = () => {
           </p>
         </div>
 
-        <div className="relative aspect-[16/9] w-full max-w-5xl mx-auto">
+        <div className="relative aspect-[16/9] w-full max-w-5xl mx-auto group/pres">
           <SlideContent 
             slide={slides[currentIndex]} 
             onImageUpload={handleImageUpdate}
           />
           
-          {/* Controls */}
           <button 
             onClick={prevSlide}
-            className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1/2 md:-translate-x-6 bg-white p-3 rounded-full shadow-lg text-gray-600 hover:text-[#D4A373] hover:scale-110 transition-all z-10"
+            className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1/2 md:-translate-x-6 bg-white p-3 rounded-full shadow-lg text-gray-600 hover:text-[#D4A373] hover:scale-110 transition-all z-10 opacity-0 group-hover/pres:opacity-100"
             aria-label="Previous Slide"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -219,7 +227,7 @@ const SlidePresentation: React.FC = () => {
           
           <button 
             onClick={nextSlide}
-            className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-1/2 md:translate-x-6 bg-white p-3 rounded-full shadow-lg text-gray-600 hover:text-[#D4A373] hover:scale-110 transition-all z-10"
+            className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-1/2 md:translate-x-6 bg-white p-3 rounded-full shadow-lg text-gray-600 hover:text-[#D4A373] hover:scale-110 transition-all z-10 opacity-0 group-hover/pres:opacity-100"
             aria-label="Next Slide"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
@@ -239,15 +247,18 @@ const SlidePresentation: React.FC = () => {
             ))}
           </div>
 
-          <button 
-            onClick={handleAddSlide}
-            className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-full shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#D4A373] transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <span>Add Slide (Paste from Clipboard)</span>
-          </button>
+          <div className="flex space-x-4">
+            <button 
+              onClick={handleAddSlide}
+              className="flex items-center space-x-2 px-6 py-3 bg-gray-900 text-white rounded-full shadow-lg text-sm font-semibold hover:bg-black transition-all transform hover:-translate-y-0.5 active:scale-95"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Paste New Slide Page</span>
+            </button>
+          </div>
+          <p className="mt-4 text-xs text-gray-400 uppercase tracking-widest font-bold">Spatial Navigation Enabled</p>
         </div>
       </div>
     </div>
