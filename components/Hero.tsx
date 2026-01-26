@@ -1,5 +1,5 @@
 import React from 'react';
-import { FOUNDER_NAME, FOUNDER_TITLE } from '../constants';
+import { FOUNDER_NAME, FOUNDER_TITLE, FOUNDER_IMAGE_URL } from '../constants';
 
 const Hero: React.FC = () => {
   return (
@@ -21,7 +21,7 @@ const Hero: React.FC = () => {
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-100 to-[#D4A373]/20 rounded-full blur-xl opacity-50"></div>
               <img 
-                src="https://picsum.photos/120/120?grayscale" 
+                src={FOUNDER_IMAGE_URL} 
                 alt={FOUNDER_NAME} 
                 className="relative w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover mb-4"
               />

@@ -1,114 +1,134 @@
 import React, { useState, useRef } from 'react';
-import { processPdfToSlides } from '../services/geminiService';
+import { processPdfToSlides, generateVideoPromptFromDeck, generateMarketingVideo } from '../services/geminiService';
 import { Slide, ProcessingState } from '../types';
 
 interface PdfSalesArchitectProps {
   onTakeover: (newSlides: Slide[]) => void;
+  onVideoGenerated: (uri: string) => void;
 }
 
-const PdfSalesArchitect: React.FC<PdfSalesArchitectProps> = ({ onTakeover }) => {
+const PdfSalesArchitect: React.FC<PdfSalesArchitectProps> = ({ onTakeover, onVideoGenerated }) => {
   const [status, setStatus] = useState<ProcessingState>(ProcessingState.IDLE);
   const [errorMsg, setErrorMsg] = useState('');
   const [progressText, setProgressText] = useState('');
+  const [lastGeneratedSlides, setLastGeneratedSlides] = useState<Slide[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || file.type !== 'application/pdf') {
-      setErrorMsg("Please upload a valid PDF file.");
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      setErrorMsg("Please upload a PDF file.");
       return;
     }
 
     setStatus(ProcessingState.PROCESSING);
     setErrorMsg('');
-    setProgressText("Reading NotebookLM deck data...");
+    setProgressText("Initializing Neural PDF Ingestion...");
 
     const reader = new FileReader();
     reader.onload = async (event) => {
-      const base64 = event.target?.result as string;
       try {
-        setProgressText("Gemini Architect is analyzing the spatial logic...");
-        const newSlides = await processPdfToSlides(base64);
+        setProgressText("Gemini 3 Pro: Synthesizing Narrative...");
+        const slides = await processPdfToSlides(event.target?.result as string);
         
-        setProgressText("Synthesizing Echelon Sales Narrative...");
-        setTimeout(() => {
-          onTakeover(newSlides);
-          setStatus(ProcessingState.SUCCESS);
-        }, 1500);
+        setProgressText("Validating Spatial Integrity...");
+        
+        setLastGeneratedSlides(slides);
+        onTakeover(slides);
+        setStatus(ProcessingState.SUCCESS);
       } catch (err: any) {
+        console.error("Architect Error:", err);
         setStatus(ProcessingState.ERROR);
-        setErrorMsg(err.message || "Failed to architect your slides.");
+        setErrorMsg(err.message || "An unexpected error occurred during synthesis.");
       }
     };
     reader.onerror = () => {
       setStatus(ProcessingState.ERROR);
-      setErrorMsg("Error reading file.");
+      setErrorMsg("File reading failed.");
     };
     reader.readAsDataURL(file);
   };
 
-  return (
-    <div className="bg-white rounded-xl shadow-lg border-2 border-[#D4A373]/30 overflow-hidden relative group">
-      <div className="p-8 text-center">
-        <div className="w-20 h-20 bg-[#D4A373]/10 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-500">
-           <svg className="w-10 h-10 text-[#D4A373]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-           </svg>
-        </div>
-        
-        <h3 className="text-2xl font-serif font-bold text-gray-900 mb-2">AI Sales Architect</h3>
-        <p className="text-gray-500 mb-8 max-w-sm mx-auto">
-          Upload a NotebookLM PDF or research deck. Gemini will automatically "take over" the canvas and construct a spatial sales narrative.
-        </p>
+  const handleCreateVideo = async () => {
+    if (!lastGeneratedSlides) return;
+    setStatus(ProcessingState.PROCESSING);
+    setProgressText("Encoding Founder Video Context...");
+    try {
+      const prompt = await generateVideoPromptFromDeck(lastGeneratedSlides);
+      setProgressText("Synthesizing Veo High-Fidelity Media...");
+      const videoUri = await generateMarketingVideo(prompt);
+      onVideoGenerated(videoUri);
+      setStatus(ProcessingState.SUCCESS);
+    } catch (err: any) {
+      console.error("Video Generation Error:", err);
+      setStatus(ProcessingState.ERROR);
+      setErrorMsg(err.message || "Video synthesis encountered a neural block.");
+    }
+  };
 
+  return (
+    <div className="bg-white rounded-xl shadow-2xl border-b-4 border-[#D4A373] overflow-hidden relative">
+      <div className="p-8 text-center">
+        <h3 className="text-2xl font-serif font-bold text-gray-900 mb-2">Echelon Sales Architect</h3>
+        
         {status === ProcessingState.PROCESSING ? (
-          <div className="space-y-4">
-            <div className="flex justify-center">
-              <div className="flex space-x-2">
-                <div className="w-3 h-3 bg-[#D4A373] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-3 h-3 bg-[#D4A373] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-3 h-3 bg-[#D4A373] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-              </div>
+          <div className="py-8">
+            <div className="flex justify-center space-x-2 mb-4">
+              <div className="w-3 h-3 bg-[#D4A373] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-3 h-3 bg-[#D4A373] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-3 h-3 bg-[#D4A373] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
             </div>
-            <p className="text-[#D4A373] font-medium text-sm tracking-wide uppercase animate-pulse">{progressText}</p>
+            <p className="text-[#D4A373] font-medium animate-pulse uppercase text-sm tracking-widest">{progressText}</p>
           </div>
         ) : (
-          <>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="px-8 py-3 bg-gray-900 text-white rounded-full font-semibold hover:bg-[#D4A373] transition-all transform hover:-translate-y-1 shadow-md"
-            >
-              Upload PDF Deck
-            </button>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept=".pdf" 
-              onChange={handleFileUpload}
-            />
-          </>
+          <div className="space-y-6">
+            <p className="text-gray-500 max-w-sm mx-auto">
+              Transform any NotebookLM export or research deck into a spatial Echelon sales experience.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => {
+                  setErrorMsg('');
+                  fileInputRef.current?.click();
+                }}
+                className="px-8 py-3 bg-gray-900 text-white rounded-full font-bold hover:bg-black transition-all shadow-md active:scale-95"
+              >
+                Upload PDF Deck
+              </button>
+              
+              {status === ProcessingState.SUCCESS && lastGeneratedSlides && (
+                <button
+                  onClick={handleCreateVideo}
+                  className="px-8 py-3 bg-[#D4A373] text-white rounded-full font-bold hover:bg-[#b0855a] transition-all shadow-lg animate-pulse"
+                >
+                  Create Founder Video
+                </button>
+              )}
+            </div>
+            <input type="file" ref={fileInputRef} className="hidden" accept=".pdf" onChange={handleFileUpload} />
+          </div>
         )}
 
         {status === ProcessingState.ERROR && (
-          <p className="text-red-500 text-sm mt-4">{errorMsg}</p>
-        )}
-        
-        {status === ProcessingState.SUCCESS && (
-          <div className="mt-4 flex items-center justify-center text-green-600 font-medium">
-            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            Canvas Synchronized
+          <div className="mt-6 p-4 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200 text-left">
+            <div className="flex items-center mb-1">
+              <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <span className="font-bold">Architectural Fault</span>
+            </div>
+            {errorMsg}
+            <button 
+              onClick={() => setStatus(ProcessingState.IDLE)} 
+              className="mt-2 block text-red-600 font-bold hover:underline"
+            >
+              Reset and Retry
+            </button>
           </div>
         )}
       </div>
-      
-      {/* Decorative corners */}
-      <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-[#D4A373]/20"></div>
-      <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-[#D4A373]/20"></div>
-      <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-[#D4A373]/20"></div>
-      <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-[#D4A373]/20"></div>
     </div>
   );
 };

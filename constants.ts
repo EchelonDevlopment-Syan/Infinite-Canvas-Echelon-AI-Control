@@ -6,6 +6,12 @@ export const FOUNDER_NAME = "Syan Kazi";
 export const FOUNDER_TITLE = "CEO & Founder, Bio-Digital Architect";
 export const COPYRIGHT_TEXT = `© 2025 ${PARENT_COMPANY}. All Rights Reserved.`;
 
+/**
+ * Replace this URL with your actual professional headshot.
+ * Currently using a fixed ID from Picsum to ensure it stays consistent on reload.
+ */
+export const FOUNDER_IMAGE_URL = "https://picsum.photos/id/1025/200/200?grayscale";
+
 export const SLIDES: Slide[] = [
   {
     id: 1,
