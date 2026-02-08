@@ -149,6 +149,28 @@ export const generateVideoPromptFromDeck = async (slides: Slide[]): Promise<stri
   return response.text || "A cinematic journey through an infinite digital canvas with perfect holographic typography.";
 };
 
+export const generateVideoPromptFromSingleSlide = async (slide: Slide): Promise<string> => {
+  const ai = getAiClient();
+  
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `Create a cinematic video generation prompt for Veo based on this specific slide concept:
+    
+    Title: ${slide.title}
+    Subtitle: ${slide.subtitle || ''}
+    Key Points: ${slide.content.join(', ')}
+    Visual Style: ${slide.visualType}
+
+    Instructions:
+    1. Visualize the abstract concepts in this slide as physical 3D holographic objects.
+    2. Style: High-end tech, Echelon AI branding (Black, Gold, Cream), Spatial Computing.
+    3. If the slide is about a 'Network', describe glowing nodes connecting. If 'Grid', describe an infinite structured plane.
+    4. Keep it concise (max 80 words) and visually descriptive for a video generation model.`
+  });
+
+  return response.text || `A high-fidelity spatial computing visualization of ${slide.title} with holographic elements.`;
+};
+
 export const generateEditedImage = async (base64Image: string, prompt: string): Promise<string> => {
   const ai = getAiClient();
   const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, '');
@@ -167,7 +189,71 @@ export const generateEditedImage = async (base64Image: string, prompt: string): 
   return `data:image/png;base64,${part.inlineData.data}`;
 };
 
-export const generateMarketingVideo = async (prompt: string, aspectRatio: '16:9' | '9:16' = '16:9'): Promise<string> => {
+export const analyzeImageText = async (base64Image: string, mode: 'extract' | 'summarize' | 'rewrite' | 'expand'): Promise<string> => {
+  const ai = getAiClient();
+  const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, '');
+  
+  let prompt = "";
+  switch (mode) {
+    case 'extract':
+      prompt = "Extract all visible text from this image exactly as it appears. Return only the text.";
+      break;
+    case 'summarize':
+      prompt = "Analyze the text in this image and provide a concise, high-level summary of the key concepts.";
+      break;
+    case 'rewrite':
+      prompt = "Read the text in this image and rewrite it to sound more executive, persuasive, and professional. Improve the grammar and flow.";
+      break;
+    case 'expand':
+      prompt = "Analyze the core ideas in this image's text and expand upon them. Add 2-3 innovative bullet points that logically follow from this content.";
+      break;
+  }
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: {
+      parts: [
+        { inlineData: { data: cleanBase64, mimeType: 'image/png' } }, 
+        { text: prompt }
+      ]
+    }
+  });
+
+  return response.text || "Unable to analyze text from this image.";
+};
+
+const proofreadVideoPrompt = async (prompt: string): Promise<string> => {
+  try {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Act as a meticulous proofreader for a high-end video production studio. 
+      Review the following video prompt for spelling and grammar errors.
+      
+      CRITICAL CHECKS:
+      1. Ensure "${COMPANY_NAME}" is spelled correctly.
+      2. Ensure "${FOUNDER_NAME}" is spelled correctly.
+      3. Fix any typos in descriptive text.
+      4. Maintain the original cinematic tone and structure.
+      
+      Return ONLY the corrected prompt text with no additional commentary.
+      
+      INPUT PROMPT:
+      ${prompt}`
+    });
+    return response.text?.trim() || prompt;
+  } catch (error) {
+    console.warn("Prompt proofreading failed, proceeding with original:", error);
+    return prompt;
+  }
+};
+
+export const generateMarketingVideo = async (
+  prompt: string, 
+  aspectRatio: '16:9' | '9:16' = '16:9',
+  useExtendedDuration: boolean = false
+): Promise<string> => {
+  
   const win = window as any;
   if (win.aistudio && win.aistudio.hasSelectedApiKey) {
     const hasKey = await win.aistudio.hasSelectedApiKey();
@@ -175,12 +261,24 @@ export const generateMarketingVideo = async (prompt: string, aspectRatio: '16:9'
        await win.aistudio.openSelectKey(); 
     }
   }
-  
+
+  // Auto-correct the prompt before generation
+  const cleanPrompt = await proofreadVideoPrompt(prompt);
   const ai = getAiClient();
+
+  // Step 1: Generate Base Video
+  // Note: Extension REQUIRES 720p. If we are extending, we must start with 720p.
+  // If not extending, we use 1080p for max quality.
+  const resolution = useExtendedDuration ? '720p' : '1080p';
+
   let operation = await ai.models.generateVideos({
-    model: 'veo-3.1-fast-generate-preview',
-    prompt,
-    config: { numberOfVideos: 1, resolution: '720p', aspectRatio }
+    model: 'veo-3.1-generate-preview',
+    prompt: cleanPrompt,
+    config: { 
+      numberOfVideos: 1, 
+      resolution: resolution,
+      aspectRatio,
+    }
   });
 
   while (!operation.done) {
@@ -189,10 +287,39 @@ export const generateMarketingVideo = async (prompt: string, aspectRatio: '16:9'
   }
 
   if (operation.error) {
-    throw new Error(`Veo error: ${operation.error.message}`);
+    throw new Error(`Veo error (Phase 1): ${operation.error.message}`);
   }
 
-  const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
+  let videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
+  const previousVideo = operation.response?.generatedVideos?.[0]?.video;
+
+  // Step 2: Extend Video (if requested)
+  // This adds ~7 seconds to the existing clip.
+  if (useExtendedDuration && previousVideo) {
+    operation = await ai.models.generateVideos({
+      model: 'veo-3.1-generate-preview',
+      prompt: cleanPrompt, // Continue the visual theme
+      video: previousVideo,
+      config: { 
+        numberOfVideos: 1, 
+        resolution: '720p', // Extension must be 720p
+        aspectRatio,
+      }
+    });
+
+    while (!operation.done) {
+      await new Promise(resolve => setTimeout(resolve, 8000));
+      operation = await ai.operations.getVideosOperation({ operation });
+    }
+
+    if (operation.error) {
+      // If extension fails, we fallback to the original video URI rather than crashing
+      console.error("Extension failed, returning base video", operation.error);
+    } else {
+      videoUri = operation.response?.generatedVideos?.[0]?.video?.uri || videoUri;
+    }
+  }
+
   if (!videoUri) throw new Error("No video URI returned.");
   
   const response = await fetch(`${videoUri}&key=${process.env.API_KEY}`);
