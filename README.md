@@ -2,9 +2,24 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# Echelon AI Control - Infinite Canvas
 
-This contains everything you need to run your app locally.
+**Your app is working!** See it in action below:
+
+![App Working](https://github.com/user-attachments/assets/6357f82a-f666-48de-a785-b090fd2f0fe6)
+
+---
+
+## 🚀 QUICK START - Get Live in 5 Minutes
+
+**Want to deploy for live testing right now?**
+
+1. **Quick Deploy:** See [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) ✅
+2. **Detailed Guide:** See [QUICKSTART.md](QUICKSTART.md) 📖
+
+**#1 Issue:** Missing API key in Netlify → [Fix it here](DEPLOYMENT_CHECKLIST.md#-1-reason-it-doesnt-load-missing-api-key)
+
+---
 
 View your app in AI Studio: https://ai.studio/apps/drive/1L72Rsuoj9idSR-ALBZj8Nkuis4aISZZp
 
