@@ -40,10 +40,19 @@ View your app in AI Studio: https://ai.studio/apps/drive/1L72Rsuoj9idSR-ALBZj8Nk
    
    Create a `.env` file in the root directory (this file is gitignored):
    ```bash
-   GEMINI_API_KEY=your_gemini_api_key_here
+   cp .env.example .env
+   # Edit .env and add your API key
+   GEMINI_API_KEY=your_actual_gemini_api_key_here
    ```
    
    Get your API key from: https://aistudio.google.com/apikey
+   
+   **Verify it's set correctly:**
+   ```bash
+   npm run verify-env
+   ```
+   
+   See [ENV_SETUP.md](ENV_SETUP.md) for detailed setup and verification instructions.
    
    ⚠️ **Security Note**: Configure API key restrictions in [Google Cloud Console](https://console.cloud.google.com/):
    - Restrict to HTTP referrers (localhost:3000 for dev)
