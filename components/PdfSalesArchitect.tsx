@@ -103,18 +103,17 @@ const PdfSalesArchitect: React.FC<PdfSalesArchitectProps> = ({ onTakeover, onVid
       let prompt = "";
       
       if (videoMode === 'deck') {
-        setProgressText("Encoding Founder Context (Full Deck)...");
+        setProgressText("Synthesizing Video from Full Deck Context...");
         prompt = await generateVideoPromptFromDeck(lastGeneratedSlides);
       } else {
         // Individual Slide Mode
         const slide = lastGeneratedSlides.find(s => s.id === selectedSlideId);
         if (!slide) throw new Error("Selected slide not found.");
         
-        setProgressText(`Encoding Spatial Context: ${slide.title}...`);
+        setProgressText(`Synthesizing Video from Slide ${slide.id}: "${slide.title.substring(0, 20)}..."`);
         prompt = await generateVideoPromptFromSingleSlide(slide);
       }
 
-      setProgressText("Proofreading & Synthesizing Veo High-Fidelity Media...");
       // Default to standard duration (High Res) for automated flow to ensure success
       const videoUri = await generateMarketingVideo(prompt, '16:9', false);
       onVideoGenerated(videoUri);

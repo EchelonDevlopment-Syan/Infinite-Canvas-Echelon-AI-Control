@@ -141,8 +141,13 @@ export const generateVideoPromptFromDeck = async (slides: Slide[]): Promise<stri
     The video must feel like a high-end luxury brand commercial for a company owned by ${FOUNDER_NAME}. 
     Focus on holographic interfaces and "Infinite Canvas" visuals. 
     
-    IMPORTANT: Describe any text as 'perfectly typeset and flawless'. 
-    Example: 'The ${COMPANY_NAME} logo glows in sharp, pixel-perfect 8K resolution.'
+    IMPORTANT TEXT INSTRUCTIONS: 
+    1. MINIMIZE TEXT on screen to avoid rendering errors.
+    2. ONLY display the company name "${COMPANY_NAME}" or simple, large headlines.
+    3. Do NOT include small body text, bullet points, or paragraphs as they will be unreadable.
+    4. Any text shown MUST be perfectly spelled and crystal clear 8K resolution.
+
+    Visual Style: Cinematic, Ethereal, Gold & Black, Future Tech.
     Keep it under 100 words.`
   });
   
@@ -164,8 +169,8 @@ export const generateVideoPromptFromSingleSlide = async (slide: Slide): Promise<
     Instructions:
     1. Visualize the abstract concepts in this slide as physical 3D holographic objects.
     2. Style: High-end tech, Echelon AI branding (Black, Gold, Cream), Spatial Computing.
-    3. If the slide is about a 'Network', describe glowing nodes connecting. If 'Grid', describe an infinite structured plane.
-    4. Keep it concise (max 80 words) and visually descriptive for a video generation model.`
+    3. TEXT RULE: Only render the Title "${slide.title}" if necessary. Do NOT render the bullet points as text. Visualize them as objects instead.
+    4. Keep it concise (max 80 words) and visually descriptive.`
   });
 
   return response.text || `A high-fidelity spatial computing visualization of ${slide.title} with holographic elements.`;
@@ -228,13 +233,13 @@ const proofreadVideoPrompt = async (prompt: string): Promise<string> => {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Act as a meticulous proofreader for a high-end video production studio. 
-      Review the following video prompt for spelling and grammar errors.
+      Review the following video prompt.
       
-      CRITICAL CHECKS:
+      CRITICAL INSTRUCTIONS:
       1. Ensure "${COMPANY_NAME}" is spelled correctly.
       2. Ensure "${FOUNDER_NAME}" is spelled correctly.
-      3. Fix any typos in descriptive text.
-      4. Maintain the original cinematic tone and structure.
+      3. REMOVE any requests for small text, bullet points, or detailed paragraphs. The video generator cannot render them clearly.
+      4. Suggest visualizing concepts as 3D objects instead of text where possible.
       
       Return ONLY the corrected prompt text with no additional commentary.
       
