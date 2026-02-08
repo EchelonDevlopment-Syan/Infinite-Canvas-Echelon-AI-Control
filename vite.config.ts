@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
-    // In production (Netlify), use environment variable directly
+    // Fallback chain: .env file (dev) -> process.env (Netlify build)
     const apiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || '';
     
     return {
